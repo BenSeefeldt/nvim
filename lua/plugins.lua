@@ -422,6 +422,10 @@ local plugins = {
             throttle = 1000 / 100,
         },
     },
+    {
+        'folke/zen-mode.nvim',
+        config = true,
+    },
     { 'gpanders/editorconfig.nvim' },
     {
         'rmagatti/goto-preview',
