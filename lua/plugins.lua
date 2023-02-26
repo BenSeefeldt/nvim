@@ -475,9 +475,26 @@ local plugins = {
 
         },
         lazy = false,
-        config = function()
-            require 'mason'.setup()
+        opts = {
+            ensure_installed = {
+                'gopls',
+                'html-lsp',
+                'lua-language-server',
+                'typescript-language-server',
+                'pyright',
+                'graphql-language-service-cli',
+            },
+        },
+        config = function(plugin, opts)
+            require 'mason'.setup(opts)
             require 'mason-lspconfig'.setup {}
+            local mr = require 'mason-registry'
+            for _, tool in ipairs(opts.ensure_installed) do
+                local p = mr.get_package(tool)
+                if not p:is_installed() then
+                    p:install()
+                end
+            end
 
 
             local function attach(client, bufnr)
