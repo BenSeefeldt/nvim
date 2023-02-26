@@ -1,12 +1,12 @@
 -- Bootstrap lazy
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
 if not vim.loop.fs_stat(lazypath) then
     vim.fn.system({
-        "git",
-        "clone",
-        "--filter=blob:none",
-        "https://github.com/folke/lazy.nvim.git",
-        "--branch=stable", -- latest stable release
+        'git',
+        'clone',
+        '--filter=blob:none',
+        'https://github.com/folke/lazy.nvim.git',
+        '--branch=stable', -- latest stable release
         lazypath,
     })
 end
@@ -93,7 +93,11 @@ local plugins = {
                     lualine_z = {'location' }
                 },
                 tabline = {
-                    lualine_a = { clock },
+                    lualine_a = {
+                        function ()
+                            return ' ' .. os.date ' %a %m/%d/%y' .. ' -  ' .. os.date '%H:%M'
+                        end
+                    },
                     lualine_b = {
                         { navic.get_location, cond = navic.is_available },
                     },
@@ -227,6 +231,7 @@ local plugins = {
             vim.cmd [[highlight IndentBlanklineIndent2 guibg=#1a1a1a gui=nocombine]]
             require'indent_blankline'.setup {
                 char = '▏',
+                context_char = '▏',
                 show_trailing_blankline_indent = false,
                 space_char_blankline = ' ',
                 show_current_context = true,
@@ -419,15 +424,17 @@ local plugins = {
     { 'gpanders/editorconfig.nvim' },
     {
         'rmagatti/goto-preview',
-        opt = {
-            default_mappings = true
-        },
+        lazy = false,
+        config = function()
+            require'goto-preview'.setup {
+                default_mappings = true
+            }
+        end
     },
 
     {
         'neovim/nvim-lspconfig',
         dependencies = { 
-            'SmiteshP/nvim-navic',
             'hrsh7th/cmp-nvim-lsp',
         },
         config = function() 
@@ -452,43 +459,59 @@ local plugins = {
                 end
             })
             local lspconfig = require'lspconfig'
-            local navic = require("nvim-navic")
             local lsp_defaults = lspconfig.util.default_config
 
-            lsp_defaults.capabilities = vim.tbl_deep_extend( 'force', lsp_defaults.capabilities, require'cmp_nvim_lsp'.default_capabilities())
+            -- Add LSP types to 
+            lsp_defaults.capabilities = vim.tbl_deep_extend('force', lsp_defaults.capabilities, require'cmp_nvim_lsp'.default_capabilities())
+        end,
+    },
+    {
+        'williamboman/mason.nvim',
+        dependencies = {
+            'williamboman/mason-lspconfig.nvim',
+            'SmiteshP/nvim-navic',
+        },
+        lazy = false,
+        config = function () 
+            require'mason'.setup()
+            require'mason-lspconfig'.setup { }
 
-            lspconfig.gopls.setup {
-                on_attach = function(client, bufnr)
-                    navic.attach(client, bufnr)
-                end,
-                cmd = {"gopls", "serve"},
-                filetypes = {"go", "gomod"},
-                root_dir = require'lspconfig/util'.root_pattern("go.work", "go.mod", ".git"),
-                settings = {
-                    gopls = {
-                        codelenses = {
-                            test = true
-                        },
-                        analyses = {
-                            unusedparams = true,
-                        },
-                        staticcheck = true,
-                    },
-                },
-            }
 
-            lspconfig.tsserver.setup {
-                on_attach = function(client, bufnr)
-                    navic.attach(client, bufnr)
-                end,
-                settings = {
-                    completions = {
-                        completeFunctionCalls = true
+            local function attach (client, bufnr) 
+                require'nvim-navic'.attach(client, bufnr)
+            end
+
+            require'mason-lspconfig'.setup_handlers {
+                -- The first entry (without a key) will be the default handler
+                -- and will be called for each installed server that doesn't have
+                -- a dedicated handler.
+                function (server_name) -- default handler (optional)
+                    require'lspconfig'[server_name].setup {
+                        on_attach = attach
                     }
-                }
-            }
+                end,
 
-            lspconfig.graphql.setup{}
+                ['gopls'] = function ()
+                    require'lspconfig'.gopls.setup {
+                        on_attach = attach,
+                        cmd = {'gopls', 'serve'},
+                        filetypes = {'go', 'gomod'},
+                        root_dir = require'lspconfig/util'.root_pattern('go.work', 'go.mod', '.git'),
+                        settings = {
+                            gopls = {
+                                codelenses = {
+                                    test = true
+                                },
+                                analyses = {
+                                    unusedparams = true,
+                                },
+                                staticcheck = true,
+                            },
+                        },
+                    }
+                end
+
+            }
         end,
     },
 }
