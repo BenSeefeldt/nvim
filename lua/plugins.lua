@@ -13,7 +13,7 @@ end
 vim.opt.rtp:prepend(lazypath)
 
 -- `cond = false` to disable plugin
-local plugins = { 
+local plugins = {
     {
         'folke/tokyonight.nvim', -- Color Scheme
         lazy = false, -- make sure we load this during startup if it is your main colorscheme
@@ -47,17 +47,18 @@ local plugins = {
                     fzffind = function(state)
                         local node = state.tree:get_node()
                         local path = node:get_id()
-                        require'fzf-lua'.files({ cwd = path })
+                        require 'fzf-lua'.files({ cwd = path })
                     end,
                     grep = function(state)
                         local node = state.tree:get_node()
                         local path = node:get_id()
-                        require'fzf-lua'.live_grep({ cwd = path })
+                        require 'fzf-lua'.live_grep({ cwd = path })
                     end,
                     grepsensitive = function(state)
                         local node = state.tree:get_node()
                         local path = node:get_id()
-                        require'fzf-lua'.live_grep_glob({ cwd = path, cmd = 'rg --column --line-number --no-heading --color=always ' })
+                        require 'fzf-lua'.live_grep_glob({ cwd = path,
+                            cmd = 'rg --column --line-number --no-heading --color=always ' })
                     end,
                 },
             },
@@ -71,40 +72,40 @@ local plugins = {
         'nvim-lualine/lualine.nvim', -- custom status bar
         lazy = false,
         priority = 1000,
-        dependencies = { 
+        dependencies = {
             'nvim-tree/nvim-web-devicons',
             'SmiteshP/nvim-navic',
         },
-        config = function() 
-            local navic = require'nvim-navic'
-            require'lualine'.setup {
+        config = function()
+            local navic = require 'nvim-navic'
+            require 'lualine'.setup {
                 options = {
                     icons_enabled = true,
                     path = 1,
-                    component_separators = { left = '', right = ''},
-                    section_separators = { left = '', right = ''},
+                    component_separators = { left = '', right = '' },
+                    section_separators = { left = '', right = '' },
                 },
                 sections = {
-                    lualine_a = {  { 'mode', fmt = function(str) return str:sub(1,1):lower() end } },
-                    lualine_b = {'branch', 'diff', 'diagnostics'},
-                    lualine_c = {'filename'},
-                    lualine_x = {'encoding', 'filetype'},
-                    lualine_y = {'progress'},
-                    lualine_z = {'location' }
+                    lualine_a = { { 'mode', fmt = function(str) return str:sub(1, 1):lower() end } },
+                    lualine_b = { 'branch', 'diff', 'diagnostics' },
+                    lualine_c = { 'filename' },
+                    lualine_x = { 'encoding', 'filetype' },
+                    lualine_y = { 'progress' },
+                    lualine_z = { 'location' }
                 },
                 tabline = {
                     lualine_a = {
-                        function ()
+                        function()
                             return ' ' .. os.date ' %a %m/%d/%y' .. ' -  ' .. os.date '%H:%M'
                         end
                     },
                     lualine_b = {
                         { navic.get_location, cond = navic.is_available },
                     },
-                    lualine_c = { },
-                    lualine_z = { 
-                        { 
-                            function () 
+                    lualine_c = {},
+                    lualine_z = {
+                        {
+                            function()
                                 hostname = vim.loop.os_gethostname()
                                 if string.find(hostname, 'local') then
                                     return 'λ'
@@ -114,7 +115,7 @@ local plugins = {
                             end
                         }
                     },
-                    lualine_y = { 
+                    lualine_y = {
                         {
                             'tabs',
                             mode = 0,
@@ -130,22 +131,22 @@ local plugins = {
             'nvim-treesitter/nvim-treesitter-textobjects',
         },
         build = function()
-            require'nvim-treesitter.install'.update({ with_sync = true })
+            require 'nvim-treesitter.install'.update({ with_sync = true })
         end,
-        config = function (_, opts) 
+        config = function(_, opts)
             vim.opt.foldmethod = 'expr'
             vim.opt.foldexpr = 'nvim_treesitter#foldexpr()'
             vim.opt.foldlevel = 25
-            require'nvim-treesitter.configs'.setup {
-                ensure_installed = { 
+            require 'nvim-treesitter.configs'.setup {
+                ensure_installed = {
                     'bash', 'help', 'html', 'javascript', 'json',
                     'lua', 'markdown', 'markdown_inline', 'python',
                     'query', 'regex', 'tsx', 'typescript', 'vim',
                     'yaml', 'kotlin', 'go', 'latex', 'bibtex',
-                    'c', 'cpp', 'css', 'diff', 'elm', 'gitignore', 
-                    'git_rebase', 'gitattributes', 'gitcommit', 
+                    'c', 'cpp', 'css', 'diff', 'elm', 'gitignore',
+                    'git_rebase', 'gitattributes', 'gitcommit',
                     'graphql', 'gomod', 'make', 'sql', 'swift',
-                    'terraform', 
+                    'terraform',
                 },
                 highlight = {
                     enable = true,
@@ -189,15 +190,15 @@ local plugins = {
             refresh_interval = 500,
         },
     },
-    { 
+    {
         'terrortylor/nvim-comment', -- quick toggle comment
-        config = function() 
-            require'nvim_comment'.setup()
+        config = function()
+            require 'nvim_comment'.setup()
         end,
-    }, 
-    { 
+    },
+    {
         'kevinhwang91/nvim-bqf' -- better quick fix
-    }, 
+    },
     {
         'folke/trouble.nvim', -- makes errors look nicer
         opts = {
@@ -210,7 +211,7 @@ local plugins = {
             direction = 'float',
             winbar = {
                 enabled = true,
-                name_formatter = function(term) 
+                name_formatter = function(term)
                     return term.name
                 end
             },
@@ -222,14 +223,14 @@ local plugins = {
     },
     { 'tpope/vim-fugitive' },
     { 'tpope/vim-rhubarb' },
-    { 
+    {
         'lukas-reineke/indent-blankline.nvim', -- Add colors to indent columns
-        config = function() 
+        config = function()
             vim.cmd [[highlight IndentBlanklineContextStart guisp=#82aaff gui=underline]]
             vim.cmd [[highlight IndentBlanklineContextChar guifg=#82aaff gui=nocombine]]
             vim.cmd [[highlight IndentBlanklineIndent1 guibg=#1f1f1f gui=nocombine]]
             vim.cmd [[highlight IndentBlanklineIndent2 guibg=#1a1a1a gui=nocombine]]
-            require'indent_blankline'.setup {
+            require 'indent_blankline'.setup {
                 char = '▏',
                 context_char = '▏',
                 show_trailing_blankline_indent = false,
@@ -238,7 +239,7 @@ local plugins = {
                 show_current_context_start = true,
             }
         end,
-    }, 
+    },
     {
         'hrsh7th/nvim-cmp',
         dependencies = {
@@ -277,7 +278,7 @@ local plugins = {
                 Operator = '',
                 TypeParameter = ''
             }
-            local cmp = require'cmp'
+            local cmp = require 'cmp'
             cmp.setup {
                 snippet = {
                     expand = function(args)
@@ -286,7 +287,7 @@ local plugins = {
                 },
                 mapping = {
                     ['<C-d>'] = cmp.mapping.scroll_docs(4),
-                    ['<C-f>'] = cmp.mapping.scroll_docs(-4),
+                    ['<C-f>'] = cmp.mapping.scroll_docs( -4),
                     ['<C-Space>'] = cmp.mapping.complete(),
                     ['<C-e>'] = cmp.mapping.close(),
                     ['<CR>'] = cmp.mapping.confirm({ select = true }),
@@ -325,12 +326,12 @@ local plugins = {
                     -- view: (default is cmdline view)
                     -- opts: any options passed to the view
                     -- icon_hl_group: optional hl_group for the icon
-                    cmdline = { title='', pattern = '^:', icon = '', lang = 'vim' },
-                    search_down = { title='', kind = 'search', pattern = '^/', icon = ' ', lang = 'regex' },
-                    search_up = { title='', kind = 'search', pattern = '^%?', icon = ' ', lang = 'regex' },
-                    filter = { title='', pattern = '^:%s*!', icon = '$', lang = 'bash' },
-                    lua = { title='', pattern = '^:%s*lua%s+', icon = '', lang = 'lua' },
-                    help = { title='', pattern = '^:%s*he?l?p?%s+', icon = '' },
+                    cmdline = { title = '', pattern = '^:', icon = '', lang = 'vim' },
+                    search_down = { title = '', kind = 'search', pattern = '^/', icon = ' ', lang = 'regex' },
+                    search_up = { title = '', kind = 'search', pattern = '^%?', icon = ' ', lang = 'regex' },
+                    filter = { title = '', pattern = '^:%s*!', icon = '$', lang = 'bash' },
+                    lua = { title = '', pattern = '^:%s*lua%s+', icon = '', lang = 'lua' },
+                    help = { title = '', pattern = '^:%s*he?l?p?%s+', icon = '' },
                     input = {}, -- Used by input()
                     -- lua = false, -- to disable a format, set to `false`
                 },
@@ -426,7 +427,7 @@ local plugins = {
         'rmagatti/goto-preview',
         lazy = false,
         config = function()
-            require'goto-preview'.setup {
+            require 'goto-preview'.setup {
                 default_mappings = true
             }
         end
@@ -434,16 +435,16 @@ local plugins = {
 
     {
         'neovim/nvim-lspconfig',
-        dependencies = { 
+        dependencies = {
             'hrsh7th/cmp-nvim-lsp',
         },
-        config = function() 
+        config = function()
             vim.api.nvim_create_autocmd('LspAttach', {
                 group = lsp_cmds,
                 desc = 'LSP actions',
                 callback = function()
                     local bufmap = function(mode, lhs, rhs)
-                        vim.keymap.set(mode, lhs, rhs, {buffer = true})
+                        vim.keymap.set(mode, lhs, rhs, { buffer = true })
                     end
 
                     vim.keymap.set('n', 'gd', vim.lsp.buf.definition, bufopts)
@@ -455,14 +456,14 @@ local plugins = {
                     vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, bufopts)
                     vim.keymap.set('n', ']d', vim.diagnostic.goto_next, bufopts)
                     vim.keymap.set('n', '==', function() vim.lsp.buf.format { async = true } end, bufopts)
-
                 end
             })
-            local lspconfig = require'lspconfig'
+            local lspconfig = require 'lspconfig'
             local lsp_defaults = lspconfig.util.default_config
 
-            -- Add LSP types to 
-            lsp_defaults.capabilities = vim.tbl_deep_extend('force', lsp_defaults.capabilities, require'cmp_nvim_lsp'.default_capabilities())
+            -- Add LSP types to
+            lsp_defaults.capabilities = vim.tbl_deep_extend('force', lsp_defaults.capabilities,
+                require 'cmp_nvim_lsp'.default_capabilities())
         end,
     },
     {
@@ -470,33 +471,35 @@ local plugins = {
         dependencies = {
             'williamboman/mason-lspconfig.nvim',
             'SmiteshP/nvim-navic',
+            { "folke/neodev.nvim", opts = { experimental = { pathStrict = true } } },
+
         },
         lazy = false,
-        config = function () 
-            require'mason'.setup()
-            require'mason-lspconfig'.setup { }
+        config = function()
+            require 'mason'.setup()
+            require 'mason-lspconfig'.setup {}
 
 
-            local function attach (client, bufnr) 
-                require'nvim-navic'.attach(client, bufnr)
+            local function attach(client, bufnr)
+                require 'nvim-navic'.attach(client, bufnr)
             end
 
-            require'mason-lspconfig'.setup_handlers {
+            require 'mason-lspconfig'.setup_handlers {
                 -- The first entry (without a key) will be the default handler
                 -- and will be called for each installed server that doesn't have
                 -- a dedicated handler.
-                function (server_name) -- default handler (optional)
-                    require'lspconfig'[server_name].setup {
+                function(server_name) -- default handler (optional)
+                    require 'lspconfig'[server_name].setup {
                         on_attach = attach
                     }
                 end,
 
-                ['gopls'] = function ()
-                    require'lspconfig'.gopls.setup {
+                ['gopls'] = function()
+                    require 'lspconfig'.gopls.setup {
                         on_attach = attach,
-                        cmd = {'gopls', 'serve'},
-                        filetypes = {'go', 'gomod'},
-                        root_dir = require'lspconfig/util'.root_pattern('go.work', 'go.mod', '.git'),
+                        cmd = { 'gopls', 'serve' },
+                        filetypes = { 'go', 'gomod' },
+                        root_dir = require 'lspconfig/util'.root_pattern('go.work', 'go.mod', '.git'),
                         settings = {
                             gopls = {
                                 codelenses = {
@@ -517,4 +520,4 @@ local plugins = {
 }
 
 -- Set everything up
-require'lazy'.setup(plugins)
+require 'lazy'.setup(plugins)
