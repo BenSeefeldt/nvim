@@ -220,17 +220,23 @@ local plugins = {
             wk.register({
                 ['<leader>'] = {
                     g = { '<cmd>FzfLua live_grep_glob<CR>', ' Grep' },
-                    G = { '<cmd>lua require"fzf-lua".live_grep_glob({ cmd = "rg --column --line-number --no-heading --color=always " })<CR>', ' Case-sensitive Grep' },
+                    G = { '<cmd>lua require"fzf-lua".live_grep_glob({ cmd = "rg --column --line-number --no-heading --color=always " })<CR>', ' C-S Grep' },
                     w = { '<cmd>FzfLua grep_cword<CR>', ' Cursor Word' },
                     f = { '<cmd>FzfLua files<CR>', ' Files' },
                     b = { '<cmd>FzfLua buffers<CR>', ' Buffers' },
-                    l = { '<cmd>FzfLua blines<CR>', ' Lines' },
+                    -- l = { '<cmd>FzfLua blines<CR>', ' Lines' },
                     m = { '<cmd>FzfLua marks<CR>', ' Marks' },
                     o = { '<cmd>FzfLua oldfiles<CR>', ' Old Files' },
                     r = { '<cmd>FzfLua resume<CR>', ' Resume' },
                     t = { '<cmd>Neotree<CR>', ' NeoTree' },
+                    h = {
+                        name = ' Git',
+                        b = { '<cmd>Git blame<CR>', ' Blame' },
+                        r = { '<cmd>.GBrowse<CR>', ' Browse' },
+                        d = { '<cmd>Gitsigns diffthis<CR>', ' Diff' },
+                    },
                     c = {
-                        name = '+commands',
+                        name = '⌘ Commands',
                         t = { '<cmd>TermExec direction="horizontal" size=15 cmd="cd %:p:h && go test"<CR>', ' Run Go Tests' },
                         j = { '<cmd>JsonFormat<CR>', ' Format Json' },
                         z = { '<cmd>ZenMode<CR>', ' ZenMode' },
@@ -241,6 +247,12 @@ local plugins = {
                     },
 
                 },
+                [']'] = {
+                    b = { '<cmd>bnext<cr>', 'Next buffer' },
+                },
+                ['['] = {
+                    b = { '<cmd>bprevious<cr>', 'Previous buffer' },
+                }
             })
         end,
     },
