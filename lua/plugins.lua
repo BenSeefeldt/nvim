@@ -188,7 +188,7 @@ local plugins = {
         'echasnovski/mini.pairs',
         version = '*',
         config = function()
-           require 'mini.pairs'.setup()
+            require 'mini.pairs'.setup()
         end,
     },
     {
@@ -198,6 +198,51 @@ local plugins = {
             builtin_marks = { '.', '<', '>', '^' },
             refresh_interval = 500,
         },
+    },
+    {
+        'folke/which-key.nvim',
+        config = function()
+            vim.o.timeout = true
+            vim.o.timeoutlen = 400
+            -- require('which-key').setup({ })
+            local wk = require 'which-key'
+            wk.setup {
+                plugins = {
+                    spelling = {
+                        enabled = true,
+                        suggestions = 30,
+                    },
+                },
+                window = {
+                    border = 'rounded', -- none, single, double, shadow
+                },
+            }
+            wk.register({
+                ['<leader>'] = {
+                    g = { '<cmd>FzfLua live_grep_glob<CR>', ' Grep' },
+                    G = { '<cmd>lua require"fzf-lua".live_grep_glob({ cmd = "rg --column --line-number --no-heading --color=always " })<CR>', ' Case-sensitive Grep' },
+                    w = { '<cmd>FzfLua grep_cword<CR>', ' Cursor Word' },
+                    f = { '<cmd>FzfLua files<CR>', ' Files' },
+                    b = { '<cmd>FzfLua buffers<CR>', ' Buffers' },
+                    l = { '<cmd>FzfLua blines<CR>', ' Lines' },
+                    m = { '<cmd>FzfLua marks<CR>', ' Marks' },
+                    o = { '<cmd>FzfLua oldfiles<CR>', ' Old Files' },
+                    r = { '<cmd>FzfLua resume<CR>', ' Resume' },
+                    t = { '<cmd>Neotree<CR>', ' NeoTree' },
+                    c = {
+                        name = '+commands',
+                        t = { '<cmd>TermExec direction="horizontal" size=15 cmd="cd %:p:h && go test"<CR>', ' Run Go Tests' },
+                        j = { '<cmd>JsonFormat<CR>', ' Format Json' },
+                        z = { '<cmd>ZenMode<CR>', ' ZenMode' },
+                        ['1'] = { '<cmd>ToggleTerm 1<CR>', ' Term 1' },
+                        ['2'] = { '<cmd>ToggleTerm 2<CR>', ' Term 2' },
+                        ['3'] = { '<cmd>ToggleTerm 3 size=20 direction=horizontal<CR>', ' Term 3' },
+                        ['4'] = { '<cmd>ToggleTerm 4 size=20 direction=horizontal<CR>', ' Term 4' },
+                    },
+
+                },
+            })
+        end,
     },
     {
         'terrortylor/nvim-comment', -- quick toggle comment
@@ -484,7 +529,7 @@ local plugins = {
         dependencies = {
             'williamboman/mason-lspconfig.nvim',
             'SmiteshP/nvim-navic',
-            { "folke/neodev.nvim", opts = { experimental = { pathStrict = true } } },
+            { 'folke/neodev.nvim', opts = { experimental = { pathStrict = true } } },
 
         },
         lazy = false,
