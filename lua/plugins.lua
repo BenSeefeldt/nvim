@@ -57,8 +57,10 @@ local plugins = {
                     grepsensitive = function(state)
                         local node = state.tree:get_node()
                         local path = node:get_id()
-                        require 'fzf-lua'.live_grep_glob({ cwd = path,
-                            cmd = 'rg --column --line-number --no-heading --color=always ' })
+                        require 'fzf-lua'.live_grep_glob({
+                            cwd = path,
+                            cmd = 'rg --column --line-number --no-heading --color=always '
+                        })
                     end,
                 },
             },
@@ -180,6 +182,13 @@ local plugins = {
                     },
                 },
             }
+        end,
+    },
+    {
+        'echasnovski/mini.pairs',
+        version = '*',
+        config = function()
+           require 'mini.pairs'.setup()
         end,
     },
     {
