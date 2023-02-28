@@ -240,6 +240,7 @@ local plugins = {
                         t = { '<cmd>TermExec direction="horizontal" size=15 cmd="cd %:p:h && go test"<CR>', ' Run Go Tests' },
                         j = { '<cmd>JsonFormat<CR>', ' Format Json' },
                         z = { '<cmd>ZenMode<CR>', ' ZenMode' },
+                        f = { '<cmd>!open -R %<CR><CR>', ' Reveal in Finder' },
                         ['1'] = { '<cmd>ToggleTerm 1<CR>', ' Term 1' },
                         ['2'] = { '<cmd>ToggleTerm 2<CR>', ' Term 2' },
                         ['3'] = { '<cmd>ToggleTerm 3 size=20 direction=horizontal<CR>', ' Term 3' },
