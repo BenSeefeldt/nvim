@@ -232,6 +232,7 @@ local plugins = {
                     h = {
                         name = ' Git',
                         b = { '<cmd>Git blame<CR>', ' Blame' },
+                        v = { '<cmd>Gitsigns blame_line<CR>', ' View Commit' },
                         r = { '<cmd>.GBrowse<CR>', ' Browse' },
                         d = { '<cmd>Gitsigns diffthis<CR>', ' Diff' },
                     },
