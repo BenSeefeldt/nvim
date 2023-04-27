@@ -6,14 +6,11 @@ function map(mode, lhs, rhs, opts)
     vim.keymap.set(mode, lhs, rhs, options)
 end
 
+-- Most keybinds can be found in `lua/plugins.lua` in `which-key` configuration.
+
+-- Swap command key
 map('n', ';', ':')
 map('n', ':', ':')
 
--- To close terms
-map({'t'}, '<leader>q', '<cmd>ToggleTermToggleAll<CR>')
-
-map('n', 'vv', '<C-w>v')
-map('n', 'vs', '<C-w>s')
-
+-- Custom user commands
 vim.api.nvim_create_user_command('JsonFormat', "execute '%!jq' | set filetype=json", {})
-

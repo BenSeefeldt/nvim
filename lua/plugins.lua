@@ -16,14 +16,28 @@ vim.opt.rtp:prepend(lazypath)
 local plugins = {
     {
         'folke/tokyonight.nvim', -- Color Scheme
-        lazy = false, -- make sure we load this during startup if it is your main colorscheme
-        priority = 1000, -- make sure to load this before all the other start plugins
+        lazy = false,            -- make sure we load this during startup if it is your main colorscheme
+        priority = 1000,         -- make sure to load this before all the other start plugins
         config = function()
+            require("tokyonight").setup({
+                on_highlights = function(hl, c)
+                    hl.DiffText = { bg = c.diff.text, bold = true }
+                end,
+            })
             vim.cmd([[colorscheme tokyonight-moon]])
         end,
     },
+    { 'christoomey/vim-tmux-navigator' },
     {
         'ibhagwan/fzf-lua', -- Fuzzy Find
+        opts = {
+            'fzf-native',
+            winopts = {
+                preview = {
+                    layout = "vertical"
+                }
+            }
+        }
     },
     {
         'nvim-neo-tree/neo-tree.nvim', -- Tree navigation
@@ -77,6 +91,7 @@ local plugins = {
         dependencies = {
             'nvim-tree/nvim-web-devicons',
             'SmiteshP/nvim-navic',
+            'ibhagwan/fzf-lua',
         },
         config = function()
             local navic = require 'nvim-navic'
@@ -98,11 +113,26 @@ local plugins = {
                 tabline = {
                     lualine_a = {
                         function()
-                            return ' ' .. os.date ' %a %m/%d/%y' .. ' -  ' .. os.date '%H:%M'
-                        end
+                            local msg = ''
+                            local buf_ft = vim.api.nvim_buf_get_option(0, 'filetype')
+                            local clients = vim.lsp.get_active_clients()
+                            if next(clients) == nil then
+                                return msg
+                            end
+                            for _, client in ipairs(clients) do
+                                local filetypes = client.config.filetypes
+                                if filetypes and vim.fn.index(filetypes, buf_ft) ~= -1 then
+                                    return " " .. client.name
+                                end
+                            end
+                            return msg
+                        end,
                     },
                     lualine_b = {
-                        { navic.get_location, cond = navic.is_available },
+                        {
+                            function() return navic.get_location() end,
+                            cond = navic.is_available,
+                        },
                     },
                     lualine_c = {},
                     lualine_z = {
@@ -145,9 +175,9 @@ local plugins = {
                     'lua', 'markdown', 'markdown_inline', 'python',
                     'query', 'regex', 'tsx', 'typescript', 'vim',
                     'yaml', 'kotlin', 'go', 'latex', 'bibtex',
-                    'c', 'cpp', 'css', 'diff', 'elm', 'gitignore',
+                    'c', 'cpp', 'css', 'diff', 'elm',
                     'git_rebase', 'gitattributes', 'gitcommit',
-                    'graphql', 'gomod', 'make', 'sql', 'swift',
+                    'graphql', 'gomod', 'make',
                     'terraform',
                 },
                 highlight = {
@@ -184,27 +214,27 @@ local plugins = {
             }
         end,
     },
-    {
-        'echasnovski/mini.pairs',
-        version = '*',
-        config = function()
-            require 'mini.pairs'.setup()
-        end,
-    },
-    {
-        'chentoast/marks.nvim', -- adds gutter symbols for marks.
-        opts = {
-            default_mappings = false,
-            builtin_marks = { '.', '<', '>', '^' },
-            refresh_interval = 500,
-        },
-    },
+    { 'jiangmiao/auto-pairs' },
+    -- {
+    --     'windwp/nvim-autopairs',
+    --     config = function()
+    --         require 'nvim-autopairs'.setup()
+    --     end,
+    -- },
+    -- {
+    --     'chentoast/marks.nvim', -- adds gutter symbols for marks.
+    --     opts = {
+    --         default_mappings = false,
+    --         builtin_marks = { '.', '<', '>', '^' },
+    --         refresh_interval = 500,
+    --         excluded_filetypes = { 'toggleterm' },
+    --     },
+    -- },
     {
         'folke/which-key.nvim',
         config = function()
             vim.o.timeout = true
             vim.o.timeoutlen = 400
-            -- require('which-key').setup({ })
             local wk = require 'which-key'
             wk.setup {
                 plugins = {
@@ -217,37 +247,96 @@ local plugins = {
                     border = 'rounded', -- none, single, double, shadow
                 },
             }
+            local Terminal = require('toggleterm.terminal').Terminal
+            local lazygit  = Terminal:new({
+                cmd = "lazygit",
+                hidden = true,
+                float_opts = {
+                    border = "double",
+                },
+                on_open = function(term)
+                    vim.cmd("startinsert!")
+                    vim.api.nvim_buf_set_keymap(term.bufnr, "n", "q", "<cmd>close<CR>", { noremap = true, silent = true })
+                end,
+                -- function to run on closing the terminal
+                on_close = function(_)
+                    vim.cmd("startinsert!")
+                end,
+            })
+            function LazygitToggle()
+                lazygit:toggle()
+            end
+
+            -- term bindings
             wk.register({
                 ['<leader>'] = {
-                    g = { '<cmd>FzfLua live_grep_glob<CR>', ' Grep' },
-                    G = { '<cmd>lua require"fzf-lua".live_grep_glob({ cmd = "rg --column --line-number --no-heading --color=always " })<CR>', ' C-S Grep' },
-                    w = { '<cmd>FzfLua grep_cword<CR>', ' Cursor Word' },
-                    f = { '<cmd>FzfLua files<CR>', ' Files' },
-                    b = { '<cmd>FzfLua buffers<CR>', ' Buffers' },
-                    -- l = { '<cmd>FzfLua blines<CR>', ' Lines' },
-                    m = { '<cmd>FzfLua marks<CR>', ' Marks' },
-                    o = { '<cmd>FzfLua oldfiles<CR>', ' Old Files' },
-                    r = { '<cmd>FzfLua resume<CR>', ' Resume' },
-                    t = { '<cmd>Neotree<CR>', ' NeoTree' },
+                    q = { '<cmd>ToggleTermToggleAll<CR>', 'Quit terms' },
+                    p = { '<c-\\><c-n><c-w><c-p>', 'Previous window' },
+                }
+            }, { mode = "t" })
+
+            -- visual bindings
+            wk.register({
+                ['<leader>'] = {
+                    c = { '"*y', 'Copy to system clipboard' },
+                    g = { '<cmd>FzfLua grep_visual<CR>', 'Grep selection' },
+                }
+            }, { mode = "v" })
+
+            -- normal bindings
+            wk.register({
+                ['v'] = {
+                    v = { '<C-w>v', 'Vertical Split' },
+                    s = { '<C-w>s', 'Horizontal Split' },
+                },
+                ['<leader>'] = {
+                    g = { '<cmd>FzfLua live_grep_glob<CR>', ' Grep' },
+                    G = {
+                        '<cmd>lua require"fzf-lua".live_grep_glob({ cmd = "rg --column --line-number --no-heading --color=always " })<CR>',
+                        ' C-S Grep' },
+                    w = { '<cmd>FzfLua grep_cword<CR>', ' Cursor Word' },
+                    f = { '<cmd>FzfLua files<CR>', ' Files' },
+                    b = { '<cmd>FzfLua buffers<CR>', ' Buffers' },
+                    -- l = { '<cmd>FzfLua blines<CR>', ' Lines' },
+                    m = { '<cmd>FzfLua marks<CR>', ' Marks' },
+                    o = { '<cmd>FzfLua oldfiles<CR>', ' Old Files' },
+                    r = { '<cmd>FzfLua resume<CR>', ' Resume' },
+                    T = { '<cmd>Neotree<CR>', ' NeoTree' },
+                    l = { '<cmd>nohl<CR>', 'Clear highlight' },
                     h = {
                         name = ' Git',
                         b = { '<cmd>Git blame<CR>', ' Blame' },
-                        v = { '<cmd>Gitsigns blame_line<CR>', ' View Commit' },
+                        v = { '<cmd>GitGutterPreviewHunk<CR>', ' View Diff' },
                         r = { '<cmd>.GBrowse<CR>', ' Browse' },
-                        d = { '<cmd>Gitsigns diffthis<CR>', ' Diff' },
+                        d = { '<cmd>Gvdiffsplit<CR>', ' Diff' },
+                        l = { '<cmd>lua LazygitToggle()<CR>', ' LazyGit' },
                     },
-                    c = {
-                        name = '⌘ Commands',
-                        t = { '<cmd>TermExec direction="horizontal" size=15 cmd="cd %:p:h && go test"<CR>', ' Run Go Tests' },
-                        j = { '<cmd>JsonFormat<CR>', ' Format Json' },
-                        z = { '<cmd>ZenMode<CR>', ' ZenMode' },
-                        f = { '<cmd>!open -R %<CR><CR>', ' Reveal in Finder' },
+                    t = {
+                        name = "Terms",
                         ['1'] = { '<cmd>ToggleTerm 1<CR>', ' Term 1' },
                         ['2'] = { '<cmd>ToggleTerm 2<CR>', ' Term 2' },
                         ['3'] = { '<cmd>ToggleTerm 3 size=20 direction=horizontal<CR>', ' Term 3' },
                         ['4'] = { '<cmd>ToggleTerm 4 size=20 direction=horizontal<CR>', ' Term 4' },
+                        ['5'] = { '<cmd>ToggleTerm 5<CR>', ' Term 5' },
+                        ['6'] = { '<cmd>ToggleTerm 6<CR>', ' Term 6' },
+                        ['7'] = { '<cmd>ToggleTerm 7 size=40 direction=vertical<CR>', ' Term 7' },
+                        ['8'] = { '<cmd>ToggleTerm 8 size=40 direction=vertical<CR>', ' Term 8' },
+                        g = { '<cmd>TermExec direction="horizontal" size=15 cmd="cd %:p:h && go test"<CR>',
+                            ' Run Go Tests' },
                     },
-
+                    c = {
+                        name = '⌘ Commands',
+                        a = { '<cmd>CodeActionMenu<CR>', ' Code Action Menu' },
+                        b = { '<cmd>lua vim.lsp.buf.code_action()<CR>', ' Code Action' },
+                        n = { '<cmd>!echo -n % | pbcopy<CR><CR>', 'Copy Filname' },
+                        f = { '<cmd>!open -R %<CR><CR>', ' Reveal in Finder' },
+                        j = { '<cmd>JsonFormat<CR>', ' Format Json' },
+                        e = { '<cmd>%!jq @json<CR>', ' Escape Json' },
+                        z = { '<cmd>ZenMode<CR>', ' ZenMode' },
+                        u = { '<cmd>UndotreeToggle<CR>', ' Undo Tree' },
+                        t = { '<cmd>Trouble<CR>', '! Trouble' },
+                        o = { '<cmd>FzfLua lsp_document_symbols<CR>', ' Symbol Outline' },
+                    },
                 },
                 [']'] = {
                     b = { '<cmd>bnext<cr>', 'Next buffer' },
@@ -258,12 +347,13 @@ local plugins = {
             })
         end,
     },
-    {
-        'terrortylor/nvim-comment', -- quick toggle comment
-        config = function()
-            require 'nvim_comment'.setup()
-        end,
-    },
+    -- {
+    --     'terrortylor/nvim-comment', -- quick toggle comment
+    --     config = function()
+    --         require 'nvim_comment'.setup()
+    --     end,
+    -- },
+    { 'tpope/vim-commentary' },
     {
         'kevinhwang91/nvim-bqf' -- better quick fix
     },
@@ -283,40 +373,49 @@ local plugins = {
                     return term.name
                 end
             },
+            persist_mode = false,
         },
     },
     {
-        'lewis6991/gitsigns.nvim',
-        config = true,
+        'airblade/vim-gitgutter',
+        init = function()
+            vim.g.gitgutter_map_keys = 0
+        end,
+        config = function ()
+            local opts = vim.g.gitgutter_floating_window_options
+            opts.border = 'rounded'
+            vim.g.gitgutter_floating_window_options = opts
+        end,
     },
     { 'tpope/vim-fugitive' },
     { 'tpope/vim-rhubarb' },
-    {
-        'lukas-reineke/indent-blankline.nvim', -- Add colors to indent columns
-        config = function()
-            vim.cmd [[highlight IndentBlanklineContextStart guisp=#82aaff gui=underline]]
-            vim.cmd [[highlight IndentBlanklineContextChar guifg=#82aaff gui=nocombine]]
-            vim.cmd [[highlight IndentBlanklineIndent1 guibg=#1f1f1f gui=nocombine]]
-            vim.cmd [[highlight IndentBlanklineIndent2 guibg=#1a1a1a gui=nocombine]]
-            require 'indent_blankline'.setup {
-                char = '▏',
-                context_char = '▏',
-                show_trailing_blankline_indent = false,
-                space_char_blankline = ' ',
-                show_current_context = true,
-                show_current_context_start = true,
-            }
-        end,
-    },
+    -- {
+    --     'lukas-reineke/indent-blankline.nvim', -- Add colors to indent columns
+    --     config = function()
+    --         vim.cmd [[highlight IndentBlanklineContextStart guisp=#82aaff gui=underline]]
+    --         vim.cmd [[highlight IndentBlanklineContextChar guifg=#82aaff gui=nocombine]]
+    --         vim.cmd [[highlight IndentBlanklineIndent1 guibg=#1f1f1f gui=nocombine]]
+    --         vim.cmd [[highlight IndentBlanklineIndent2 guibg=#1a1a1a gui=nocombine]]
+    --         require 'indent_blankline'.setup {
+    --             char = '▏',
+    --             context_char = '▏',
+    --             show_trailing_blankline_indent = false,
+    --             space_char_blankline = ' ',
+    --             show_current_context = true,
+    --             show_current_context_start = true,
+    --         }
+    --     end,
+    -- },
     {
         'hrsh7th/nvim-cmp',
         dependencies = {
             'hrsh7th/cmp-nvim-lsp',
-            'hrsh7th/cmp-buffer',
-            'hrsh7th/cmp-path',
-            'hrsh7th/cmp-cmdline',
+            -- 'hrsh7th/cmp-buffer',
+            -- 'hrsh7th/cmp-path',
+            -- 'hrsh7th/cmp-cmdline',
             'hrsh7th/cmp-vsnip',
             'hrsh7th/vim-vsnip',
+            -- 'rafamadriz/friendly-snippets',
         },
         opts = function()
             local kind_icons = {
@@ -353,9 +452,13 @@ local plugins = {
                         vim.fn['vsnip#anonymous'](args.body)
                     end,
                 },
+                window = {
+                    completion = cmp.config.window.bordered(),
+                    documentation = cmp.config.window.bordered(),
+                },
                 mapping = {
                     ['<C-d>'] = cmp.mapping.scroll_docs(4),
-                    ['<C-f>'] = cmp.mapping.scroll_docs( -4),
+                    ['<C-f>'] = cmp.mapping.scroll_docs(-4),
                     ['<C-Space>'] = cmp.mapping.complete(),
                     ['<C-e>'] = cmp.mapping.close(),
                     ['<CR>'] = cmp.mapping.confirm({ select = true }),
@@ -363,144 +466,153 @@ local plugins = {
                     ['<Down>'] = cmp.mapping.select_next_item(select_opts),
                     ['<C-p>'] = cmp.mapping.select_prev_item(select_opts),
                     ['<C-n>'] = cmp.mapping.select_next_item(select_opts),
-
                 },
                 sources = {
                     { name = 'nvim_lsp' },
                     { name = 'buffer' },
                     { name = 'vsnip' },
+                    -- { name = 'buffer' },
                 },
                 formatting = {
                     format = function(entry, vim_item)
                         vim_item.kind = string.format('%s %s', kind_icons[vim_item.kind], vim_item.kind) -- This concatonates the icons with the name of the item kind
+                        -- vim_item.abbr = string.sub(vim_item.abbr, 1, 25)
+                        vim_item.menu = ""
                         return vim_item
                     end
                 },
             }
         end
     },
-    {
-        'folke/noice.nvim',
-        dependencies = {
-            'MunifTanjim/nui.nvim',
-            'rcarriga/nvim-notify',
-        },
-        opts = {
-            cmdline = {
-                enabled = false, -- enables the Noice cmdline UI
-                view = 'cmdline_popup', -- view for rendering the cmdline. Change to `cmdline` to get a classic cmdline at the bottom
-                format = {
-                    -- conceal: (default=true) This will hide the text in the cmdline that matches the pattern.
-                    -- view: (default is cmdline view)
-                    -- opts: any options passed to the view
-                    -- icon_hl_group: optional hl_group for the icon
-                    cmdline = { title = '', pattern = '^:', icon = '', lang = 'vim' },
-                    search_down = { title = '', kind = 'search', pattern = '^/', icon = ' ', lang = 'regex' },
-                    search_up = { title = '', kind = 'search', pattern = '^%?', icon = ' ', lang = 'regex' },
-                    filter = { title = '', pattern = '^:%s*!', icon = '$', lang = 'bash' },
-                    lua = { title = '', pattern = '^:%s*lua%s+', icon = '', lang = 'lua' },
-                    help = { title = '', pattern = '^:%s*he?l?p?%s+', icon = '' },
-                    input = {}, -- Used by input()
-                    -- lua = false, -- to disable a format, set to `false`
-                },
-            },
-            messages = {
-                -- NOTE: If you enable messages, then the cmdline is enabled automatically.
-                -- This is a current Neovim limitation.
-                enabled = false, -- enables the Noice messages UI
-                view = 'mini', -- default view for messages
-                view_error = 'mini', -- view for errors
-                view_warn = 'mini', -- view for warnings
-                view_history = 'messages', -- view for :messages
-                view_search = 'virtualtext', -- view for search count messages. Set to `false` to disable
-            },
-            views = {
-                cmdline_popup = {
-                    backend = 'popup',
-                    relative = 'editor',
-                    focusable = false,
-                    enter = false,
-                    zindex = 60,
-                    position = {
-                        row = -2,
-                        col = 0,
-                    },
-                    size = {
-                        width = 'auto',
-                        height = 'auto',
-                    },
-                    border = {
-                        style = 'rounded',
-                        padding = { 0, 0 },
-                    },
-                    win_options = {
-                        winhighlight = {
-                            Normal = 'NoiceCmdlinePopup',
-                            FloatBorder = 'NoiceCmdlinePopupBorder',
-                            IncSearch = '',
-                            Search = '',
-                        },
-                        cursorline = false,
-                    },
-                },
-                mini = {
-                    align = 'message-left',
-                    reverse = false,
-                    timeout = 4000,
-                    position = {
-                        row = -2,
-                        col = '100%',
-                        -- col = 0,
-                    },
-                    border = {
-                        style = 'rounded',
-                    },
-                    win_options = {
-                        winblend = 0,
-                        winhighlight = {
-                            FloatBorder = 'NoicePopupmenuBorder',
-                        },
-                    },
-                },
-            },
-            popupmenu = {
-                enabled = false, -- enables the Noice popupmenu UI
-                ---@type 'nui'|'cmp'
-                backend = 'nui', -- backend to use to show regular cmdline completions
-                ---@type NoicePopupmenuItemKind|false
-                -- Icons for completion item kinds (see defaults at noice.config.icons.kinds)
-                kind_icons = {}, -- set to `false` to disable icons
-            },
-            lsp = {
-                -- override markdown rendering so that **cmp** and other plugins use **Treesitter**
-                override = {
-                    ['vim.lsp.util.convert_input_to_markdown_lines'] = true,
-                    ['vim.lsp.util.stylize_markdown'] = true,
-                    -- ['cmp.entry.get_documentation'] = true,
-                },
-            },
-            -- you can enable a preset for easier configuration
-            presets = {
-                bottom_search = false, -- use a classic bottom cmdline for search
-                -- command_palette = true, -- position the cmdline and popupmenu together
-                long_message_to_split = false, -- long messages will be sent to a split
-                inc_rename = false, -- enables an input dialog for inc-rename.nvim
-                lsp_doc_border = true, -- add a border to hover docs and signature help
-            },
-            throttle = 1000 / 100,
-        },
-    },
+    --{
+    --    'folke/noice.nvim',
+    --    dependencies = {
+    --        'MunifTanjim/nui.nvim',
+    --        'rcarriga/nvim-notify',
+    --    },
+    --    opts = {
+    --        cmdline = {
+    --            enabled = false,        -- enables the Noice cmdline UI
+    --            view = 'cmdline_popup', -- view for rendering the cmdline. Change to `cmdline` to get a classic cmdline at the bottom
+    --            format = {
+    --                -- conceal: (default=true) This will hide the text in the cmdline that matches the pattern.
+    --                -- view: (default is cmdline view)
+    --                -- opts: any options passed to the view
+    --                -- icon_hl_group: optional hl_group for the icon
+    --                cmdline = { title = '', pattern = '^:', icon = '', lang = 'vim' },
+    --                search_down = { title = '', kind = 'search', pattern = '^/', icon = ' ', lang = 'regex' },
+    --                search_up = { title = '', kind = 'search', pattern = '^%?', icon = ' ', lang = 'regex' },
+    --                filter = { title = '', pattern = '^:%s*!', icon = '$', lang = 'bash' },
+    --                lua = { title = '', pattern = '^:%s*lua%s+', icon = '', lang = 'lua' },
+    --                help = { title = '', pattern = '^:%s*he?l?p?%s+', icon = '' },
+    --                input = {}, -- Used by input()
+    --                -- lua = false, -- to disable a format, set to `false`
+    --            },
+    --        },
+    --        messages = {
+    --            -- NOTE: If you enable messages, then the cmdline is enabled automatically.
+    --            -- This is a current Neovim limitation.
+    --            enabled = false,             -- enables the Noice messages UI
+    --            view = 'mini',               -- default view for messages
+    --            view_error = 'mini',         -- view for errors
+    --            view_warn = 'mini',          -- view for warnings
+    --            view_history = 'messages',   -- view for :messages
+    --            view_search = 'virtualtext', -- view for search count messages. Set to `false` to disable
+    --        },
+    --        views = {
+    --            cmdline_popup = {
+    --                backend = 'popup',
+    --                relative = 'editor',
+    --                focusable = false,
+    --                enter = false,
+    --                zindex = 60,
+    --                position = {
+    --                    row = -2,
+    --                    col = 0,
+    --                },
+    --                size = {
+    --                    width = 'auto',
+    --                    height = 'auto',
+    --                },
+    --                border = {
+    --                    style = 'rounded',
+    --                    padding = { 0, 0 },
+    --                },
+    --                win_options = {
+    --                    winhighlight = {
+    --                        Normal = 'NoiceCmdlinePopup',
+    --                        FloatBorder = 'NoiceCmdlinePopupBorder',
+    --                        IncSearch = '',
+    --                        Search = '',
+    --                    },
+    --                    cursorline = false,
+    --                },
+    --            },
+    --            mini = {
+    --                align = 'message-left',
+    --                reverse = false,
+    --                timeout = 4000,
+    --                position = {
+    --                    row = -2,
+    --                    col = '100%',
+    --                    -- col = 0,
+    --                },
+    --                border = {
+    --                    style = 'rounded',
+    --                },
+    --                win_options = {
+    --                    winblend = 0,
+    --                    winhighlight = {
+    --                        FloatBorder = 'NoicePopupmenuBorder',
+    --                    },
+    --                },
+    --            },
+    --        },
+    --        popupmenu = {
+    --            enabled = false, -- enables the Noice popupmenu UI
+    --            ---@type 'nui'|'cmp'
+    --            backend = 'nui', -- backend to use to show regular cmdline completions
+    --            ---@type NoicePopupmenuItemKind|false
+    --            -- Icons for completion item kinds (see defaults at noice.config.icons.kinds)
+    --            kind_icons = {}, -- set to `false` to disable icons
+    --        },
+    --        lsp = {
+    --            -- override markdown rendering so that **cmp** and other plugins use **Treesitter**
+    --            override = {
+    --                ['vim.lsp.util.convert_input_to_markdown_lines'] = true,
+    --                ['vim.lsp.util.stylize_markdown'] = true,
+    --                -- ['cmp.entry.get_documentation'] = true,
+    --            },
+    --        },
+    --        -- you can enable a preset for easier configuration
+    --        presets = {
+    --            bottom_search = false,         -- use a classic bottom cmdline for search
+    --            -- command_palette = true, -- position the cmdline and popupmenu together
+    --            long_message_to_split = false, -- long messages will be sent to a split
+    --            inc_rename = false,            -- enables an input dialog for inc-rename.nvim
+    --            lsp_doc_border = true,         -- add a border to hover docs and signature help
+    --        },
+    --        throttle = 1000 / 100,
+    --    },
+    --},
     {
         'folke/zen-mode.nvim',
         config = true,
     },
-    { 'gpanders/editorconfig.nvim' },
+    {
+        'gpanders/editorconfig.nvim',
+        config = function()
+            require 'editorconfig'.properties.tab_width = function(bufnr, val) -- Override tab width to view as 4
+                vim.b[bufnr].tab_width = 4
+            end
+        end
+    },
     {
         'rmagatti/goto-preview',
         lazy = false,
         config = function()
             require 'goto-preview'.setup {
-                default_mappings = true
+                default_mappings = true,
             }
         end
     },
@@ -552,7 +664,7 @@ local plugins = {
                 'gopls',
                 'html-lsp',
                 'lua-language-server',
-                'typescript-language-server',
+                -- 'typescript-language-server',
                 'pyright',
                 'graphql-language-service-cli',
             },
@@ -570,7 +682,9 @@ local plugins = {
 
 
             local function attach(client, bufnr)
-                require 'nvim-navic'.attach(client, bufnr)
+                if client.server_capabilities.documentSymbolProvider then
+                    require 'nvim-navic'.attach(client, bufnr)
+                end
             end
 
             require 'mason-lspconfig'.setup_handlers {
@@ -582,6 +696,25 @@ local plugins = {
                         on_attach = attach
                     }
                 end,
+
+                -- ['tsserver'] = function()
+                --     require'lspconfig'.tsserver.setup {
+                --         on_attach = attach,
+                --         -- root_dir = vim.loop.cwd,
+                --         -- root_dir = require('lspconfig.util').root_pattern('.git'),
+                --         root_dir = require('lspconfig.util').root_pattern("DISABLED-----"),
+                --         init_options = {
+                --             hostInfo = "neovim",
+                --             maxTsServerMemory = 8096,
+                --             completionDisableFilterText = true,
+                --             disableAutomaticTypingAcquisition = true,
+                --             -- tsserver = {
+                --             --     logDirectory = "/Users/ben.seefeldt/tslogs/",
+                --             --     logVerbosity = "verbose",
+                --             -- },
+                --         },
+                --     }
+                -- end,
 
                 ['gopls'] = function()
                     require 'lspconfig'.gopls.setup {
@@ -597,6 +730,7 @@ local plugins = {
                                 analyses = {
                                     unusedparams = true,
                                 },
+                                -- memoryMode = "DegradeClosed",
                                 staticcheck = true,
                             },
                         },
@@ -605,6 +739,19 @@ local plugins = {
 
             }
         end,
+    },
+    -- {
+    --     'weilbith/nvim-code-action-menu', -- use command to open lsp actions selector
+    --     cmd = 'CodeActionMenu',
+    -- },
+    -- {
+    --     'kosayoda/nvim-lightbulb', -- Show a lightbulb where lsp actions are
+    --     opts = {
+    --         { autocmd = { enabled = true } }
+    --     },
+    -- },
+    {
+        'mbbill/undotree' -- Undo tree via UndotreeToggle
     },
 }
 
