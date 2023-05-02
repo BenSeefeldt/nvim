@@ -357,6 +357,7 @@ local plugins = {
     {
         'kevinhwang91/nvim-bqf' -- better quick fix
     },
+    { 'benseefeldt/qf-format.nvim', config = true }, -- quick fix formatting
     {
         'folke/trouble.nvim', -- makes errors look nicer
         opts = {
