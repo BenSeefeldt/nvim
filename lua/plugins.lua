@@ -602,14 +602,6 @@ local plugins = {
         config = true,
     },
     {
-        'gpanders/editorconfig.nvim',
-        config = function()
-            require 'editorconfig'.properties.tab_width = function(bufnr, val) -- Override tab width to view as 4
-                vim.b[bufnr].tab_width = 4
-            end
-        end
-    },
-    {
         'rmagatti/goto-preview',
         lazy = false,
         config = function()
