@@ -741,10 +741,10 @@ local plugins = {
             }
         end,
     },
-    -- {
-    --     'weilbith/nvim-code-action-menu', -- use command to open lsp actions selector
-    --     cmd = 'CodeActionMenu',
-    -- },
+    {
+        'weilbith/nvim-code-action-menu', -- use command to open lsp actions selector
+        cmd = 'CodeActionMenu',
+    },
     -- {
     --     'kosayoda/nvim-lightbulb', -- Show a lightbulb where lsp actions are
     --     opts = {
