@@ -37,7 +37,8 @@ local plugins = {
                     layout = "vertical"
                 }
             }
-        }
+        },
+        pin = true,
     },
     {
         'nvim-neo-tree/neo-tree.nvim', -- Tree navigation
