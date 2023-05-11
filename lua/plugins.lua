@@ -362,6 +362,7 @@ local plugins = {
     --     end,
     -- },
     { 'tpope/vim-commentary' },
+    { 'tpope/vim-unimpaired' },
     {
         'kevinhwang91/nvim-bqf' -- better quick fix
     },
