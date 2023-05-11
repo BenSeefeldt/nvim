@@ -36,6 +36,11 @@ local plugins = {
                 preview = {
                     layout = "vertical"
                 }
+            },
+            keymap = {
+                fzf = {
+                    ["ctrl-d"] = "toggle-all",
+                },
             }
         },
         pin = true,
@@ -304,6 +309,8 @@ local plugins = {
                     r = { '<cmd>FzfLua resume<CR>', ' Resume' },
                     T = { '<cmd>Neotree<CR>', ' NeoTree' },
                     l = { '<cmd>nohl<CR>', 'Clear highlight' },
+                    q = { [[<cmd>copen<CR>]], 'Show quickfix' },
+                    Q = { [[<cmd>call setqflist(map(getqflist(), 'extend(v:val, {"text":get(getbufline(v:val.bufnr, v:val.lnum),0)})'))<CR>]], 'Refresh quickfix' },
                     h = {
                         name = ' Git',
                         b = { '<cmd>Git blame<CR>', ' Blame' },
