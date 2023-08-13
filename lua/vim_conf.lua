@@ -6,6 +6,7 @@ local vim_opts = {
     cursorlineopt = 'both',
     ignorecase = true,
     smartcase = true,
+    smartindent = true,
     wildmenu = true,
     wildmode = 'longest:full,full',
     termguicolors = true,
@@ -39,7 +40,7 @@ vim.cmd('filetype plugin indent on')
 
 function Foldtext()
     local folded_line_num = vim.v.foldend - vim.v.foldstart
-    local start_line = vim.fn.getline(vim.v.foldstart)
+    local start_line = vim.fn.getline(vim.v.foldstart):gsub('\t',string.rep(' ', vim.opt.tabstop:get()))
     local end_line, _ = string.gsub(vim.fn.getline(vim.v.foldend), '%s+', '')
     return table.concat({
         -- '[' .. folded_line_num .. ']',
@@ -88,7 +89,6 @@ end
 --   return params
 -- end
 
-
 local _border = "single"
 
 vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(
@@ -106,3 +106,5 @@ vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(
 vim.diagnostic.config{
   float={border=_border}
 }
+vim.opt.titlestring = [[%t%(\ %M%)%( (%{expand("%:~:.:h")})%)%(\ %a%)]]
+

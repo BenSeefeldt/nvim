@@ -22,7 +22,11 @@ local plugins = {
             require("tokyonight").setup({
                 on_highlights = function(hl, c)
                     hl.DiffText = { bg = c.diff.text, bold = true }
+                    hl.DiffChange = { bg = c.diff.text, bold = true }
                 end,
+                styles = {
+                    keywords = { italic = false },
+                },
             })
             vim.cmd([[colorscheme tokyonight-moon]])
         end,
@@ -31,23 +35,30 @@ local plugins = {
     {
         'ibhagwan/fzf-lua', -- Fuzzy Find
         opts = {
-            'fzf-native',
+            'default', -- 'fzf-native',
             winopts = {
                 preview = {
                     layout = "vertical"
                 }
             },
+            grep = {
+                -- rg_opts = "--column --line-number --no-heading --color=always --smart-case --max-columns=4096"
+            },
             keymap = {
                 fzf = {
                     ["ctrl-d"] = "toggle-all",
+                    ["ctrl-q"] = "select-all+accept",
                 },
-            }
+            },
         },
-        pin = true,
+        init = function ()
+            require('fzf-lua').register_ui_select()
+        end
+        -- pin = true,
     },
     {
         'nvim-neo-tree/neo-tree.nvim', -- Tree navigation
-        branch = 'v2.x',
+        branch = 'v3.x',
         dependencies = {
             'nvim-lua/plenary.nvim',
             'nvim-tree/nvim-web-devicons',
@@ -55,12 +66,18 @@ local plugins = {
         },
         opts = {
             filesystem = {
-                follow_current_file = true,
+                filtered_items = {
+                    hide_gitignored = false
+                },
+                follow_current_file = {
+                    enabled = true,
+                },
                 window = {
                     mappings = {
                         ['g'] = 'grep',
                         ['G'] = 'grepsensitive',
                         ['f'] = 'fzffind',
+                        ['o'] = 'system_open',
                     },
                 },
                 commands = {
@@ -82,18 +99,69 @@ local plugins = {
                             cmd = 'rg --column --line-number --no-heading --color=always '
                         })
                     end,
+                    system_open = function(state)
+                        local node = state.tree:get_node()
+                        local path = node:get_id()
+                        local cmd = "open " .. path
+                        vim.fn.system(cmd)
+                    end
                 },
             },
             source_selector = {
                 winbar = true,
-                statusline = false
+                statusline = false,
+                sources = {
+                    { source = "filesystem", display_name = " 󰉓 Files " },
+                    { source = "buffers", display_name = " 󱉲 Buffers " },
+                    { source = "git_status", display_name = " 󰊢 Git " },
+                },
             },
+            default_component_configs = {
+                icon = {
+                    folder_empty = "󰜌",
+                    folder_empty_open = "󰜌",
+                },
+                git_status = {
+                    symbols = {
+                        renamed   = "󰁕",
+                        unstaged  = "󰄱",
+                    },
+                },
+            },
+            document_symbols = {
+                kinds = {
+                    File = { icon = "󰈙", hl = "Tag" },
+                    Namespace = { icon = "󰌗", hl = "Include" },
+                    Package = { icon = "󰏖", hl = "Label" },
+                    Class = { icon = "󰌗", hl = "Include" },
+                    Property = { icon = "󰆧", hl = "@property" },
+                    Enum = { icon = "󰒻", hl = "@number" },
+                    Function = { icon = "󰊕", hl = "Function" },
+                    String = { icon = "󰀬", hl = "String" },
+                    Number = { icon = "󰎠", hl = "Number" },
+                    Array = { icon = "󰅪", hl = "Type" },
+                    Object = { icon = "󰅩", hl = "Type" },
+                    Key = { icon = "󰌋", hl = "" },
+                    Struct = { icon = "󰌗", hl = "Type" },
+                    Operator = { icon = "󰆕", hl = "Operator" },
+                    TypeParameter = { icon = "󰊄", hl = "Type" },
+                    StaticMethod = { icon = '󰠄 ', hl = 'Function' },
+                }
+            },
+            -- -- Add this section only if you've configured source selector.
+            -- source_selector = {
+            --     sources = {
+            --         { source = "filesystem", display_name = " 󰉓 Files " },
+            --         { source = "git_status", display_name = " 󰊢 Git " },
+            --     },
+            -- },
         },
     },
     {
         'nvim-lualine/lualine.nvim', -- custom status bar
         lazy = false,
         priority = 1000,
+        -- pin = true,
         dependencies = {
             'nvim-tree/nvim-web-devicons',
             'SmiteshP/nvim-navic',
@@ -103,48 +171,134 @@ local plugins = {
             local navic = require 'nvim-navic'
             require 'lualine'.setup {
                 options = {
+                    theme = 'tokyonight',
                     icons_enabled = true,
                     path = 1,
                     component_separators = { left = '', right = '' },
                     section_separators = { left = '', right = '' },
                 },
                 sections = {
-                    lualine_a = { { 'mode', fmt = function(str) return str:sub(1, 1):lower() end } },
-                    lualine_b = { 'branch', 'diff', 'diagnostics' },
-                    lualine_c = { 'filename' },
-                    lualine_x = { 'encoding', 'filetype' },
+                    lualine_a = { { 'mode', fmt = function(str)
+                        local lower_mode = str:lower()
+                        local single_char = lower_mode:sub(1, 1)
+                        local first_mode = lower_mode:sub(1, 2)
+                        if first_mode == "v-" then
+                            return lower_mode
+                        end
+                        return single_char
+
+                    end } },
+                    lualine_b = {
+                        {
+                            'diff',
+                            on_click = function(_,_,_)
+                                vim.cmd('Gvdiffsplit')
+                            end
+                        },
+                        {
+                            'diagnostics',
+                            on_click = function(_,_,_)
+                                vim.cmd('TroubleToggle document_diagnostics')
+                            end
+
+                        }
+                    },
+                    lualine_c = {
+                        {
+                            'filename',
+                            symbols = {
+                                readonly = '',      -- Text to show when the file is non-modifiable or readonly.
+                            }
+                        }
+                    },
+                    lualine_x = {
+                        {
+                            'encoding',
+                        },
+                        -- {
+                        --     function()
+                        --         local space_pat = [[\v^ +]]
+                        --         local tab_pat = [[\v^\t+]]
+                        --         local space_indent = vim.fn.search(space_pat, 'nwc')
+                        --         local tab_indent = vim.fn.search(tab_pat, 'nwc')
+                        --         local mixed = (space_indent > 0 and tab_indent > 0)
+                        --         local mixed_same_line
+                        --         if not mixed then
+                        --             mixed_same_line = vim.fn.search([[\v^(\t+ | +\t)]], 'nwc')
+                        --             mixed = mixed_same_line > 0
+                        --         end
+                        --         if not mixed and space_indent > 0 then
+                        --             return "󱁐"
+                        --         end
+                        --         if not mixed and tab_indent > 0 then
+                        --             return "󰌒"
+                        --         end
+                        --         if mixed_same_line ~= nil and mixed_same_line > 0 then
+                        --             return ':'..mixed_same_line
+                        --         end
+                        --         local space_indent_cnt = vim.fn.searchcount({pattern=space_pat, max_count=1e3}).total
+                        --         local tab_indent_cnt =  vim.fn.searchcount({pattern=tab_pat, max_count=1e3}).total
+                        --         if space_indent_cnt == 0 and tab_indent_cnt == 0 then
+                        --             return "󰢤"
+                        --         end
+                        --         if space_indent_cnt > tab_indent_cnt then
+                        --             return ':'..tab_indent
+                        --         else
+                        --             return ':'..space_indent
+                        --         end
+                        --     end
+                        -- },
+                        {
+                            'filetype',
+                            on_click = function(_,_,_)
+                                require('fzf-lua').filetypes()
+                            end
+                        }
+                    },
                     lualine_y = { 'progress' },
                     lualine_z = { 'location' }
                 },
                 tabline = {
                     lualine_a = {
-                        function()
-                            local msg = ''
-                            local buf_ft = vim.api.nvim_buf_get_option(0, 'filetype')
-                            local clients = vim.lsp.get_active_clients()
-                            if next(clients) == nil then
-                                return msg
-                            end
-                            for _, client in ipairs(clients) do
-                                local filetypes = client.config.filetypes
-                                if filetypes and vim.fn.index(filetypes, buf_ft) ~= -1 then
-                                    return " " .. client.name
+                        {
+                            function()
+                                local msg = ''
+                                local buf_ft = vim.api.nvim_buf_get_option(0, 'filetype')
+                                local clients = vim.lsp.get_active_clients()
+                                if next(clients) == nil then
+                                    return msg
                                 end
+                                for _, client in ipairs(clients) do
+                                    local filetypes = client.config.filetypes
+                                    if filetypes and vim.fn.index(filetypes, buf_ft) ~= -1 then
+                                        return " " .. client.name
+                                    end
+                                end
+                                return msg
+                            end,
+                            on_click = function(_,_,_)
+                                vim.cmd('LspInfo')
                             end
-                            return msg
-                        end,
+                        }
                     },
                     lualine_b = {
+                        {
+                            'branch',
+                            on_click = function(_,_,_)
+                                LazygitToggle()
+                            end
+                        },
+                    },
+                    lualine_c = {
                         {
                             function() return navic.get_location() end,
                             cond = navic.is_available,
                         },
                     },
-                    lualine_c = {},
                     lualine_z = {
                         {
                             function()
-                                hostname = vim.loop.os_gethostname()
+                                local hostname = vim.loop.os_gethostname()
                                 if string.find(hostname, 'local') then
                                     return 'λ'
                                 else
@@ -158,6 +312,61 @@ local plugins = {
                             'tabs',
                             mode = 0,
                         },
+                    }
+                },
+                extensions = {
+                    'fzf',
+                    'lazy',
+                    'toggleterm',
+                    'symbols-outline',
+                    'trouble',
+                    'neo-tree',
+                    {
+                       filetypes = { 'help' },
+                       sections = {
+                           lualine_a = { function () return '?' end },
+                           lualine_c = {
+                               {
+                                   'filename',
+                                   path = 0,
+                                   symbols = {
+                                       readonly = '',
+                                   }
+                               }
+                           },
+                           lualine_z = { 'location' },
+                       }
+
+                    },
+                    {
+                       filetypes = { 'fugitiveblame' },
+                       sections = {
+                           lualine_a = { function ()
+                               return 'Blame'
+                           end },
+                           lualine_z = { 'location' },
+                       }
+
+                    },
+                    {
+                        filetypes = { 'qf' },
+                        sections = {
+                            lualine_a = { function ()
+                                if vim.fn.getloclist(0, { filewinid = 1 }).filewinid ~= 0 then
+                                    return 'Loclist'
+                                else
+                                    return 'Quickfix'
+                                end
+                            end },
+                            lualine_b = { function ()
+                                if vim.fn.getloclist(0, { filewinid = 1 }).filewinid ~= 0 then
+                                    return vim.fn.getloclist(0, { title = 0 }).title
+                                else
+                                    return vim.fn.getqflist({ title = 0 }).title
+                                end
+                            end },
+                            lualine_z = { 'location' },
+                        }
                     }
                 },
             }
@@ -176,16 +385,16 @@ local plugins = {
             vim.opt.foldexpr = 'nvim_treesitter#foldexpr()'
             vim.opt.foldlevel = 25
             require 'nvim-treesitter.configs'.setup {
-                ensure_installed = {
-                    'bash', 'help', 'html', 'javascript', 'json',
-                    'lua', 'markdown', 'markdown_inline', 'python',
-                    'query', 'regex', 'tsx', 'typescript', 'vim',
-                    'yaml', 'kotlin', 'go', 'latex', 'bibtex',
-                    'c', 'cpp', 'css', 'diff', 'elm',
-                    'git_rebase', 'gitattributes', 'gitcommit',
-                    'graphql', 'gomod', 'make',
-                    'terraform',
-                },
+                -- ensure_installed = {
+                --     'bash', 'help', 'html', 'javascript', 'json',
+                --     'lua', 'markdown', 'markdown_inline', 'python',
+                --     'query', 'regex', 'tsx', 'typescript', 'vim',
+                --     'yaml', 'kotlin', 'go', 'latex', 'bibtex',
+                --     'c', 'cpp', 'css', 'diff', 'elm',
+                --     'git_rebase', 'gitattributes', 'gitcommit',
+                --     'graphql', 'gomod', 'make',
+                --     'terraform',
+                -- },
                 highlight = {
                     enable = true,
                     additional_vim_regex_highlighting = false,
@@ -198,6 +407,9 @@ local plugins = {
                         scope_incremental = '<c-s>',
                         node_decremental = '<M-space>',
                     },
+                },
+                indent = {
+                    enable = true
                 },
                 textobjects = {
                     move = {
@@ -220,24 +432,17 @@ local plugins = {
             }
         end,
     },
-    { 'jiangmiao/auto-pairs' },
-    -- {
-    --     'windwp/nvim-autopairs',
-    --     config = function()
-    --         require 'nvim-autopairs'.setup()
-    --     end,
-    -- },
-    -- {
-    --     'chentoast/marks.nvim', -- adds gutter symbols for marks.
-    --     opts = {
-    --         default_mappings = false,
-    --         builtin_marks = { '.', '<', '>', '^' },
-    --         refresh_interval = 500,
-    --         excluded_filetypes = { 'toggleterm' },
-    --     },
-    -- },
+    { 
+        'Raimondi/delimitMate',
+        config = function()
+            local g = vim.g
+            g.delimitMate_expand_cr = 1
+            g.delimitMate_expand_space = 1
+        end
+    },
     {
         'folke/which-key.nvim',
+        dependencies = { 'afreakk/unimpaired-which-key.nvim' },
         config = function()
             vim.o.timeout = true
             vim.o.timeoutlen = 400
@@ -273,104 +478,80 @@ local plugins = {
                 lazygit:toggle()
             end
 
+            -- Import locally defined keymappings
+            local keymaps = require'keymap'
+
             -- term bindings
-            wk.register({
-                ['<leader>'] = {
-                    q = { '<cmd>ToggleTermToggleAll<CR>', 'Quit terms' },
-                    p = { '<c-\\><c-n><c-w><c-p>', 'Previous window' },
-                }
-            }, { mode = "t" })
+            wk.register(keymaps.term, { mode = 't' })
 
             -- visual bindings
-            wk.register({
-                ['<leader>'] = {
-                    c = { '"*y', 'Copy to system clipboard' },
-                    g = { '<cmd>FzfLua grep_visual<CR>', 'Grep selection' },
-                }
-            }, { mode = "v" })
+            wk.register(keymaps.visual, { mode = 'v' })
 
             -- normal bindings
-            wk.register({
-                ['v'] = {
-                    v = { '<C-w>v', 'Vertical Split' },
-                    s = { '<C-w>s', 'Horizontal Split' },
-                },
-                ['<leader>'] = {
-                    g = { '<cmd>FzfLua live_grep_glob<CR>', ' Grep' },
-                    G = {
-                        '<cmd>lua require"fzf-lua".live_grep_glob({ cmd = "rg --column --line-number --no-heading --color=always " })<CR>',
-                        ' C-S Grep' },
-                    w = { '<cmd>FzfLua grep_cword<CR>', ' Cursor Word' },
-                    f = { '<cmd>FzfLua files<CR>', ' Files' },
-                    b = { '<cmd>FzfLua buffers<CR>', ' Buffers' },
-                    -- l = { '<cmd>FzfLua blines<CR>', ' Lines' },
-                    m = { '<cmd>FzfLua marks<CR>', ' Marks' },
-                    o = { '<cmd>FzfLua oldfiles<CR>', ' Old Files' },
-                    r = { '<cmd>FzfLua resume<CR>', ' Resume' },
-                    T = { '<cmd>Neotree<CR>', ' NeoTree' },
-                    l = { '<cmd>nohl<CR>', 'Clear highlight' },
-                    q = { [[<cmd>copen<CR>]], 'Show quickfix' },
-                    Q = { [[<cmd>call setqflist(map(getqflist(), 'extend(v:val, {"text":get(getbufline(v:val.bufnr, v:val.lnum),0)})'))<CR>]], 'Refresh quickfix' },
-                    h = {
-                        name = ' Git',
-                        b = { '<cmd>Git blame<CR>', ' Blame' },
-                        v = { '<cmd>GitGutterPreviewHunk<CR>', ' View Diff' },
-                        r = { '<cmd>.GBrowse<CR>', ' Browse' },
-                        d = { '<cmd>Gvdiffsplit<CR>', ' Diff' },
-                        l = { '<cmd>lua LazygitToggle()<CR>', ' LazyGit' },
-                    },
-                    t = {
-                        name = "Terms",
-                        ['1'] = { '<cmd>ToggleTerm 1<CR>', ' Term 1' },
-                        ['2'] = { '<cmd>ToggleTerm 2<CR>', ' Term 2' },
-                        ['3'] = { '<cmd>ToggleTerm 3 size=20 direction=horizontal<CR>', ' Term 3' },
-                        ['4'] = { '<cmd>ToggleTerm 4 size=20 direction=horizontal<CR>', ' Term 4' },
-                        ['5'] = { '<cmd>ToggleTerm 5<CR>', ' Term 5' },
-                        ['6'] = { '<cmd>ToggleTerm 6<CR>', ' Term 6' },
-                        ['7'] = { '<cmd>ToggleTerm 7 size=40 direction=vertical<CR>', ' Term 7' },
-                        ['8'] = { '<cmd>ToggleTerm 8 size=40 direction=vertical<CR>', ' Term 8' },
-                        g = { '<cmd>TermExec direction="horizontal" size=15 cmd="cd %:p:h && go test"<CR>',
-                            ' Run Go Tests' },
-                    },
-                    c = {
-                        name = '⌘ Commands',
-                        a = { '<cmd>CodeActionMenu<CR>', ' Code Action Menu' },
-                        b = { '<cmd>lua vim.lsp.buf.code_action()<CR>', ' Code Action' },
-                        n = { '<cmd>!echo -n % | pbcopy<CR><CR>', 'Copy Filname' },
-                        f = { '<cmd>!open -R %<CR><CR>', ' Reveal in Finder' },
-                        j = { '<cmd>JsonFormat<CR>', ' Format Json' },
-                        e = { '<cmd>%!jq @json<CR>', ' Escape Json' },
-                        z = { '<cmd>ZenMode<CR>', ' ZenMode' },
-                        u = { '<cmd>UndotreeToggle<CR>', ' Undo Tree' },
-                        t = { '<cmd>Trouble<CR>', '! Trouble' },
-                        o = { '<cmd>FzfLua lsp_document_symbols<CR>', ' Symbol Outline' },
-                    },
-                },
-                [']'] = {
-                    b = { '<cmd>bnext<cr>', 'Next buffer' },
-                },
-                ['['] = {
-                    b = { '<cmd>bprevious<cr>', 'Previous buffer' },
-                }
-            })
+            wk.register(keymaps.normal)
+
+            -- Register unimpaired key bindings
+            local uwk = require'unimpaired-which-key'
+            wk.register(uwk.normal_mode)
+            wk.register(uwk.normal_and_visual_mode, { mode = { 'n', 'v' } })
         end,
     },
-    -- {
-    --     'terrortylor/nvim-comment', -- quick toggle comment
-    --     config = function()
-    --         require 'nvim_comment'.setup()
-    --     end,
-    -- },
     { 'tpope/vim-commentary' },
     { 'tpope/vim-unimpaired' },
+    { 'tpope/vim-surround' },
     {
-        'kevinhwang91/nvim-bqf' -- better quick fix
+        'kevinhwang91/nvim-bqf', -- better quick fix
+        opts = {
+            preview = {
+                winblend = 0
+            }
+        }
     },
-    { 'benseefeldt/qf-format.nvim', config = true }, -- quick fix formatting
+    { 'ashfinal/qfview.nvim', config = true, pin = true }, -- quick fix formatting
+    {
+        'j-hui/fidget.nvim', -- display lsp loading info
+        config = true ,
+        tag = 'legacy',
+    },
     {
         'folke/trouble.nvim', -- makes errors look nicer
         opts = {
             mode = 'document_diagnostics',
+        },
+    },
+    {
+        'simrat39/symbols-outline.nvim',
+        opts = {
+            symbols = {
+                Array = { icon = "󰅪", hl = "Type" },
+                Boolean = { icon = '⊨', hl = '@boolean' },
+                Class = { icon = "󰌗", hl = "Include" },
+                Component = { icon = '󰌗', hl = '@function' },
+                Constant = { icon = '', hl = '@constant' },
+                Constructor = { icon = '', hl = '@constructor' },
+                Enum = { icon = "󰒻", hl = "@number" },
+                EnumMember = { icon = '', hl = '@field' },
+                Event = { icon = '', hl = '@type' },
+                Field = { icon = '󰇽', hl = '@field' },
+                File = { icon = "󰈙", hl = "Tag" },
+                Fragment = { icon = '󰈙', hl = '@constant' },
+                Function = { icon = "󰊕", hl = "Function" },
+                Interface = { icon = '', hl = '@type' },
+                Key = { icon = "󰌋", hl = "" },
+                Method = { icon = 'ƒ', hl = '@method' },
+                Module = { icon = '', hl = '@namespace' },
+                Namespace = { icon = "󰌗", hl = "Include" },
+                Null = { icon = 'NULL', hl = '@type' },
+                Number = { icon = "󰎠", hl = "Number" },
+                Object = { icon = "󰅩", hl = "Type" },
+                Operator = { icon = "󰆕", hl = "Operator" },
+                Package = { icon = "󰏖", hl = "Label" },
+                Property = { icon = "󰆧", hl = "@property" },
+                String = { icon = "󰀬", hl = "String" },
+                Struct = { icon = "󰌗", hl = "Type" },
+                TypeParameter = { icon = "󰊄", hl = "Type" },
+                Variable = { icon = '', hl = '@constant' },
+            },
         },
     },
     {
@@ -387,14 +568,27 @@ local plugins = {
         },
     },
     {
+        'chentoast/marks.nvim', -- adds gutter symbols for marks.
+        opts = {
+            default_mappings = false,
+            builtin_marks = { },
+            refresh_interval = 500,
+            excluded_filetypes = { 'toggleterm', 'fugitive', 'fugitiveblame', 'quickfix', 'neo-tree' },
+        },
+    },
+    {
         'airblade/vim-gitgutter',
         init = function()
-            vim.g.gitgutter_map_keys = 0
+            -- vim.g.signcolumn = 'auto'
+            vim.g.gitgutter_map_keys = 1
+            vim.g.gitgutter_highlight_linenrs = 1
         end,
         config = function ()
             local opts = vim.g.gitgutter_floating_window_options
             opts.border = 'rounded'
             vim.g.gitgutter_floating_window_options = opts
+            -- vim.g.gitgutter_highlight_linenrs = 1
+            -- vim.g.gitgutter_highlight_linenrs = true
         end,
     },
     { 'tpope/vim-fugitive' },
@@ -429,31 +623,31 @@ local plugins = {
         },
         opts = function()
             local kind_icons = {
-                Text = '',
-                Method = '',
-                Function = '',
-                Constructor = '',
-                Field = '',
-                Variable = '',
-                Class = 'ﴯ',
-                Interface = '',
-                Module = '',
-                Property = 'ﰠ',
-                Unit = '',
-                Value = '',
-                Enum = '',
-                Keyword = '',
-                Snippet = '',
-                Color = '',
-                File = '',
-                Reference = '',
-                Folder = '',
-                EnumMember = '',
-                Constant = '',
-                Struct = '',
-                Event = '',
-                Operator = '',
-                TypeParameter = ''
+                Class = "󰠱",
+                Color = "󰏘",
+                Constant = "󰏿",
+                Constructor = "",
+                Enum = "",
+                EnumMember = "",
+                Event = "",
+                Field = "󰇽",
+                File = "󰈙",
+                Folder = "󰉋",
+                Function = "󰊕",
+                Interface = "",
+                Keyword = "󰌋",
+                Method = "󰆧",
+                Module = "",
+                Operator = "󰆕",
+                Property = "󰜢",
+                Reference = "",
+                Snippet = "",
+                Struct = "",
+                Text = "",
+                TypeParameter = "󰅲",
+                Unit = "",
+                Value = "󰎠",
+                Variable = "",
             }
             local cmp = require 'cmp'
             cmp.setup {
@@ -494,6 +688,15 @@ local plugins = {
             }
         end
     },
+    -- {
+    --     "ray-x/lsp_signature.nvim",
+    --     opts = {
+    --         fix_pos = false,
+    --         floating_window = true,
+    --         hint_enable = false,
+    --         hint_prefix = "",
+    --     },
+    -- },
     --{
     --    'folke/noice.nvim',
     --    dependencies = {
@@ -637,8 +840,9 @@ local plugins = {
                     vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, bufopts)
                     vim.keymap.set('n', 'gr', vim.lsp.buf.references, bufopts)
                     vim.keymap.set('n', 'K', vim.lsp.buf.hover, bufopts)
-                    vim.keymap.set('n', '<C-k>', vim.lsp.buf.signature_help, bufopts)
+                    vim.keymap.set('n', 'gs', vim.lsp.buf.signature_help, bufopts)
                     vim.keymap.set('n', 'gl', vim.diagnostic.setloclist, bufopts)
+                    vim.keymap.set('n', 'gh', vim.diagnostic.open_float, bufopts)
                     vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, bufopts)
                     vim.keymap.set('n', ']d', vim.diagnostic.goto_next, bufopts)
                     vim.keymap.set('n', '==', function() vim.lsp.buf.format { async = true } end, bufopts)
@@ -755,6 +959,28 @@ local plugins = {
     {
         'mbbill/undotree' -- Undo tree via UndotreeToggle
     },
+    {
+        'nvim-pack/nvim-spectre', -- enhanced search and replace.
+        opts = {
+            replace_engine = {
+                ['sed'] = {
+                    cmd = "gsed",
+                    args = nil,
+                    options = {
+                        ['ignore-case'] = {
+                            value= "--ignore-case",
+                            icon="[I]",
+                            desc="ignore case"
+                        },
+                    }
+                }
+            }
+        },
+    },
+    {
+        'gbprod/yanky.nvim',
+        config = true,
+    }
 }
 
 -- Set everything up
